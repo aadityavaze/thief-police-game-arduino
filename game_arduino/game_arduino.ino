@@ -1,8 +1,8 @@
 #include <Adafruit_CircuitPlayground.h>
 
-#define SENSOR_TIME_INCREMENT  50
-#define POLICE_TIME_INCREMENT  500
-#define THIEF_TIME_INCREMENT   500
+#define SENSOR_TIME_INCREMENT  30
+#define POLICE_TIME_INCREMENT  400
+#define THIEF_TIME_INCREMENT   400
 #define NUM_OF_LIGHTS 10
 #define VOLUME_THRESHOLD 65
 #define DIR_CHANGE_MARGIN_TIME 250
@@ -15,7 +15,7 @@ float volume;
 bool isRecent = true;
 int thiefDirection = 1, policeDirection = 1;
 
-int randomTime = random(2000,5000);
+int randomTime = random(5000,15000);
 
 //return non-negative modulo
 int mod(long int a, int b){
@@ -42,7 +42,7 @@ void blinkAllLeds(){
     lightAll(80, 0, 0);
     delay(200);
     lightAll(0, 0, 80);
-    delay(100);
+    delay(200);
     lightAll(80, 0, 0);
     delay(200);
     lightAll(80, 0, 0);
@@ -52,7 +52,7 @@ void blinkAllLeds(){
     lightAll(80, 0, 0);
     delay(200);
     lightAll(0, 0, 80);
-    delay(100);
+    delay(200);
     lightAll(80, 0, 0);
     delay(200);
     lightAll(0, 0, 0);
@@ -69,6 +69,24 @@ void lightAll(int a, int b, int c) {
     CircuitPlayground.setPixelColor(i, a,   b,   c);
     }
 }
+
+
+void moveThief(){
+
+
+    CircuitPlayground.setPixelColor(mod(thiefCounter-thiefDirection, NUM_OF_LIGHTS), 0, 0, 0);
+    CircuitPlayground.setPixelColor(mod(thiefCounter, NUM_OF_LIGHTS), 255, 255, 0);
+
+     if(mod(policeCounter, NUM_OF_LIGHTS) == mod(thiefCounter, NUM_OF_LIGHTS)){
+        blinkAllLeds();
+        resetPositions();
+      }
+
+    thiefCounter+=thiefDirection;
+    startThiefTime = millis();
+  
+  
+  }
 
     
 void setup() {
@@ -89,6 +107,27 @@ void loop() {
       volume = CircuitPlayground.mic.soundPressureLevel(10);
       startSensorTime = millis();
     }
+
+
+  //change thief's direction when loud sound detected
+  if(volume > VOLUME_THRESHOLD && isRecent){
+      Serial.println("Direction change");
+      if(isRecent){
+          startDirChangeTime = millis();
+        }
+      isRecent = false;
+      toggleThiefDirection();
+      moveThief();
+    }
+     if(!isRecent && millis() - startDirChangeTime >= DIR_CHANGE_MARGIN_TIME){
+          isRecent = true;
+        }
+
+
+  //move thief
+  if(millis() - startThiefTime >= THIEF_TIME_INCREMENT){
+    moveThief();
+    }
     
 
   //move police
@@ -105,38 +144,10 @@ void loop() {
     startPoliceTime = millis();
     }
 
-  //move thief
-  if(millis() - startThiefTime >= THIEF_TIME_INCREMENT){
-    CircuitPlayground.setPixelColor(mod(thiefCounter-thiefDirection, NUM_OF_LIGHTS), 0, 0, 0);
-    CircuitPlayground.setPixelColor(mod(thiefCounter, NUM_OF_LIGHTS), 80, 80, 80);
-
-     if(mod(policeCounter, NUM_OF_LIGHTS) == mod(thiefCounter, NUM_OF_LIGHTS)){
-        blinkAllLeds();
-        resetPositions();
-      }
-
-    thiefCounter+=thiefDirection;
-    startThiefTime = millis();
-    }
-    
-  //change thief's direction when loud sound detected
-  if(volume > VOLUME_THRESHOLD && isRecent){
-      Serial.println("Direction change");
-      if(isRecent){
-          startDirChangeTime = millis();
-        }
-      isRecent = false;
-      toggleThiefDirection();
-    }
-     if(!isRecent && millis() - startDirChangeTime >= DIR_CHANGE_MARGIN_TIME){
-          isRecent = true;
-        }
-
-
-    
+    //toggle police direction based on time
     if(millis() - startRandomizerTime >= randomTime){
         togglePoliceDirection();
-        randomTime = random(2000,5000);
+        randomTime = random(2000,15000);
         startRandomizerTime = millis();
       }
 
